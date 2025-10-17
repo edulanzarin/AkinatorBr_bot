@@ -42,7 +42,7 @@ async def play(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             await update.message.reply_text(
                 f"❗ Já existe um jogo ativo neste chat.\n"
-                f"Aguarde o término ou peça ao usuário (ID: {session.user_id}) "
+                f"Aguarde o término ou peça ao usuário que está jogando "
                 "para usar /cancelar."
             )
         return
