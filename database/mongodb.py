@@ -17,9 +17,9 @@ async def connect_mongodb():
     """Conecta ao MongoDB"""
     global _mongo_client, _db, _users_collection
     
-    mongo_uri = os.getenv("MONGO_URL")
+    mongo_uri = os.getenv("MONGODB_URI")
     if not mongo_uri:
-        logger.warning("⚠️ MONGO_URL não configurado! IDs não serão salvos.")
+        logger.warning("⚠️ MONGODB_URI não configurado! IDs não serão salvos.")
         return False
     
     try:
@@ -39,7 +39,7 @@ async def connect_mongodb():
 
 async def save_user_id(user_id: int) -> bool:
     """Salva o ID do usuário no MongoDB (apenas se não existir)"""
-    if not _users_collection:
+    if _users_collection is None:  # ← MUDANÇA AQUI
         return False
     
     try:
@@ -60,7 +60,7 @@ async def save_user_id(user_id: int) -> bool:
 
 async def get_total_users() -> int:
     """Retorna o total de usuários únicos"""
-    if not _users_collection:
+    if _users_collection is None:  # ← MUDANÇA AQUI
         return 0
     
     try:
@@ -74,6 +74,6 @@ async def get_total_users() -> int:
 async def close_mongodb():
     """Fecha a conexão com MongoDB"""
     global _mongo_client
-    if _mongo_client:
+    if _mongo_client is not None:  # ← MUDANÇA AQUI
         _mongo_client.close()
         logger.info("🔌 MongoDB desconectado")
