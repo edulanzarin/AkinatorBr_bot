@@ -13,6 +13,7 @@ from utils.session_manager import (
 )
 from utils.keyboard import create_game_keyboard
 from utils.messages import format_question, format_welcome
+from database.mongodb import save_user_id
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +21,10 @@ logger = logging.getLogger(__name__)
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handler do comando /start"""
     user = update.effective_user
+    
+    # Salva o user_id no MongoDB
+    await save_user_id(user.id)
+    
     await update.message.reply_text(
         format_welcome(user.first_name),
         parse_mode='HTML'
@@ -30,6 +35,9 @@ async def play(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handler do comando /jogar - Inicia um novo jogo"""
     chat_id = update.effective_chat.id
     user = update.effective_user
+    
+    # Salva o user_id no MongoDB
+    await save_user_id(user.id)
     
     # Verifica se já existe sessão ativa
     if has_active_session(chat_id):
@@ -51,7 +59,7 @@ async def play(update: Update, context: ContextTypes.DEFAULT_TYPE):
     session = create_session(user.id, chat_id)
     
     try:
-        # Inicia o Akinator em português - agora usando keyword arguments
+        # Inicia o Akinator em português
         await asyncio.to_thread(session.aki.start_game, language='pt', child_mode=False, theme='c')
         session.question_count = 1
         
@@ -82,6 +90,9 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handler do comando /cancelar - Cancela o jogo atual"""
     chat_id = update.effective_chat.id
     user = update.effective_user
+    
+    # Salva o user_id no MongoDB
+    await save_user_id(user.id)
     
     # Verifica se existe sessão
     if not has_active_session(chat_id):

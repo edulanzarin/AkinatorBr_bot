@@ -8,6 +8,7 @@ from telegram.ext import ContextTypes
 from utils.session_manager import get_session, delete_session, has_active_session
 from utils.keyboard import create_game_keyboard, create_guess_keyboard
 from utils.messages import format_question, format_guess, format_victory, format_defeat
+from database.mongodb import save_user_id
 from config import GUESS_THRESHOLD
 
 logger = logging.getLogger(__name__)
@@ -29,6 +30,8 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     chat_id = update.effective_chat.id
     user = update.effective_user
+
+    await save_user_id(user.id)
     
     # Verifica se existe sessão ativa
     if not has_active_session(chat_id):
@@ -201,6 +204,8 @@ async def guess_result_handler(update: Update, context: ContextTypes.DEFAULT_TYP
     
     chat_id = update.effective_chat.id
     user = update.effective_user
+
+    await save_user_id(user.id)
     
     # Verifica sessão
     if not has_active_session(chat_id):

@@ -7,6 +7,7 @@ from telegram import Update
 from handlers.commands import start, play, cancel
 from handlers.callbacks import button_handler, guess_result_handler
 from utils.session_manager import cleanup_expired_sessions, set_bot_application
+from database.mongodb import connect_mongodb, close_mongodb
 
 # Configuração de logging
 logging.basicConfig(
@@ -18,12 +19,20 @@ logger = logging.getLogger(__name__)
 
 async def post_init(application: Application) -> None:
     """Callback executado após inicialização do bot"""
+    # Conecta ao MongoDB
+    await connect_mongodb()
+    
     # Define a referência do bot no session_manager
     set_bot_application(application)
     
     # Inicia limpeza de sessões expiradas
     asyncio.create_task(cleanup_expired_sessions())
     logger.info("🧹 Sistema de limpeza de sessões iniciado")
+
+
+async def post_shutdown(application: Application) -> None:
+    """Callback executado ao desligar o bot"""
+    await close_mongodb()
 
 
 def main():
@@ -33,7 +42,13 @@ def main():
         raise ValueError("TELEGRAM_BOT_TOKEN não configurado!")
     
     # Cria aplicação
-    app = Application.builder().token(token).post_init(post_init).build()
+    app = (
+        Application.builder()
+        .token(token)
+        .post_init(post_init)
+        .post_shutdown(post_shutdown)
+        .build()
+    )
     
     # Registra comandos
     app.add_handler(CommandHandler("start", start))
