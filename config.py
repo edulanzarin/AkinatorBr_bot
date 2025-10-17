@@ -1,7 +1,7 @@
 """Configurações globais do bot"""
 
 # Tempo máximo de inatividade (em segundos)
-TIMEOUT = 300  # 5 minutos
+TIMEOUT = 120  # 2 minutos
 
 # Percentual de certeza para o Akinator fazer um palpite
 GUESS_THRESHOLD = 80

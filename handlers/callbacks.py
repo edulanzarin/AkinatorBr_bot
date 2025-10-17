@@ -213,6 +213,19 @@ async def guess_result_handler(update: Update, context: ContextTypes.DEFAULT_TYP
     
     session = get_session(chat_id)
     
+    # Verifica timeout
+    if session.is_expired():
+        delete_session(chat_id)
+        await query.message.reply_text(
+            "⏱️ Tempo esgotado! O jogo foi encerrado por inatividade.\n"
+            "Use /jogar para começar um novo jogo."
+        )
+        try:
+            await query.message.delete()
+        except:
+            pass
+        return
+    
     # Verifica usuário
     if session.user_id != user.id:
         await query.answer("❗ Este jogo pertence a outro usuário!", show_alert=True)
