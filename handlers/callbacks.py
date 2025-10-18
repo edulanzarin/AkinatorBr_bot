@@ -112,24 +112,53 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if not aki_answer:
                 return
             
-            # Envia resposta ao Akinator (versão 2.0.2)
-            await asyncio.to_thread(session.aki.answer, aki_answer)
-            session.increment_question()
-            
-            question = session.aki.question
-            
-            # Verifica se deve fazer um palpite
-            if session.get_progress() >= GUESS_THRESHOLD:
-                await make_guess(context, chat_id, session)
-            else:
-                # Próxima pergunta
-                keyboard = create_game_keyboard()
-                await context.bot.send_message(
-                    chat_id=chat_id,
-                    text=format_question(session, question),
-                    reply_markup=keyboard,
-                    parse_mode='HTML'
-                )
+            try: 
+                # Envia resposta ao Akinator (versão 2.0.2)
+                await asyncio.to_thread(session.aki.answer, aki_answer)
+                session.increment_question()
+                
+                question = session.aki.question
+                
+                # Verifica se deve fazer um palpite
+                if session.get_progress() >= GUESS_THRESHOLD:
+                    await make_guess(context, chat_id, session)
+                else:
+                    # Próxima pergunta
+                    keyboard = create_game_keyboard()
+                    await context.bot.send_message(
+                        chat_id=chat_id,
+                        text=format_question(session, question),
+                        reply_markup=keyboard,
+                        parse_mode='HTML'
+                    )
+            except RuntimeError as e:
+                # Erro da API do Akinator - tenta novamente
+                logger.warning(f"⚠️ API Akinator instável, tentando novamente...")
+                
+                try:
+                    # Segunda tentativa
+                    await asyncio.sleep(1)
+                    await asyncio.to_thread(session.aki.answer, aki_answer)
+                    session.increment_question()
+                    
+                    question = session.aki.question
+                    keyboard = create_game_keyboard()
+                    await context.bot.send_message(
+                        chat_id=chat_id,
+                        text=format_question(session, question),
+                        reply_markup=keyboard,
+                        parse_mode='HTML'
+                    )
+                except:
+                    # Se falhar de novo, avisa o usuário
+                    await context.bot.send_message(
+                        chat_id=chat_id,
+                        text="😕 O Akinator está temporariamente instável.\n"
+                            "Tente novamente em alguns minutos.\n\n"
+                            "Use /jogar para começar um novo jogo."
+                    )
+                    delete_session(chat_id)
+                    raise
     
     except Exception as e:
         logger.error(f"❌ Erro ao processar resposta: {e}")
