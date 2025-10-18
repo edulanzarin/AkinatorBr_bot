@@ -5,7 +5,7 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler
 from telegram import Update
 
 from handlers.commands import start, play, cancel, lock, unlock
-from handlers.callbacks import button_handler, guess_result_handler
+from handlers.callbacks import button_handler, guess_result_handler, continue_handler
 from utils.session_manager import cleanup_expired_sessions, set_bot_application
 from database.mongodb import connect_mongodb, close_mongodb
 
@@ -59,13 +59,18 @@ def main():
     
     # Registra callbacks
     app.add_handler(CallbackQueryHandler(
-        button_handler,
-        pattern="^(yes|no|idk|probably|probably_not|back)$"
+    button_handler,
+    pattern="^(yes|no|idk|probably|probably_not|back)$"
     ))
-    
+
     app.add_handler(CallbackQueryHandler(
         guess_result_handler,
         pattern="^(correct|wrong)$"
+    ))
+
+    app.add_handler(CallbackQueryHandler(
+        continue_handler,
+        pattern="^(continue|give_up)$"
     ))
     
     # Inicia o bot

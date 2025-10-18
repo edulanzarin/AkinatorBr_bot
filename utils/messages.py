@@ -60,7 +60,15 @@ def format_defeat() -> str:
         f"😅 <b>VOCÊ ME VENCEU!</b>\n"
         f"\n"
         f"Ah, errei dessa vez! 😔\n\n"
-        f"Parabéns, você é bom! 🏆\n"
+        f"Quer que eu continue tentando adivinhar?"
+    )
+
+
+def format_give_up() -> str:
+    """Mensagem quando o jogador desiste"""
+    return (
+        f"🏳️ <b>GAME OVER!</b>\n"
         f"\n"
-        f"Use /jogar para tentar novamente."
+        f"Você me venceu desta vez! Parabéns! 🏆\n\n"
+        f"Use /jogar para uma nova partida."
     )

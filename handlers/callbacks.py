@@ -6,8 +6,8 @@ from telegram import Update
 from telegram.ext import ContextTypes
 
 from utils.session_manager import get_session, delete_session, has_active_session
-from utils.keyboard import create_game_keyboard, create_guess_keyboard
-from utils.messages import format_question, format_guess, format_victory, format_defeat
+from utils.keyboard import create_game_keyboard, create_guess_keyboard, create_continue_keyboard
+from utils.messages import format_question, format_guess, format_victory, format_defeat, format_give_up
 from database.mongodb import save_user_id, is_chat_locked
 from config import GUESS_THRESHOLD
 
@@ -268,13 +268,99 @@ async def guess_result_handler(update: Update, context: ContextTypes.DEFAULT_TYP
             parse_mode='HTML'
         )
         logger.info(f"🎉 Vitória - Chat: {chat_id}")
+        delete_session(chat_id)
     else:
+        # Errou - pergunta se quer continuar
+        keyboard = create_continue_keyboard()
         await context.bot.send_message(
             chat_id=chat_id,
             text=format_defeat(),
+            reply_markup=keyboard,
             parse_mode='HTML'
         )
-        logger.info(f"😅 Derrota - Chat: {chat_id}")
+        logger.info(f"😅 Erro no palpite - Chat: {chat_id}")
+        # NÃO deleta a sessão aqui, espera o usuário decidir
+
+
+async def continue_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handler para continuar ou desistir após erro"""
+    query = update.callback_query
+    await query.answer()
     
-    # Remove sessão
-    delete_session(chat_id)
+    chat_id = update.effective_chat.id
+    user = update.effective_user
+    
+    # Verifica se o chat está travado
+    if await is_chat_locked(chat_id):
+        await query.answer(
+            "🔒 O bot está travado neste grupo!",
+            show_alert=True
+        )
+        return
+    
+    # Verifica sessão
+    if not has_active_session(chat_id):
+        await query.message.reply_text("⏱️ Sessão expirada.")
+        try:
+            await query.message.delete()
+        except:
+            pass
+        return
+    
+    session = get_session(chat_id)
+    
+    # Verifica timeout
+    if session.is_expired():
+        delete_session(chat_id)
+        await query.message.reply_text(
+            "⏱️ Tempo esgotado! O jogo foi encerrado por inatividade.\n"
+            "Use /jogar para começar um novo jogo."
+        )
+        try:
+            await query.message.delete()
+        except:
+            pass
+        return
+    
+    # Verifica usuário
+    if session.user_id != user.id:
+        await query.answer("❗ Este jogo pertence a outro usuário!", show_alert=True)
+        return
+    
+    action = query.data
+    
+    # Remove os botões da mensagem
+    try:
+        await query.edit_message_reply_markup(reply_markup=None)
+    except:
+        pass
+    
+    if action == "continue":
+        # Continua o jogo - próxima pergunta
+        try:
+            question = session.aki.question
+            keyboard = create_game_keyboard()
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text=format_question(session, question),
+                reply_markup=keyboard,
+                parse_mode='HTML'
+            )
+            logger.info(f"🔄 Continuando jogo - Chat: {chat_id}")
+        except Exception as e:
+            logger.error(f"❌ Erro ao continuar: {e}")
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text="😕 Ocorreu um erro ao continuar.\n"
+                     "Use /jogar para tentar novamente."
+            )
+            delete_session(chat_id)
+    else:  # give_up
+        # Desiste do jogo
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=format_give_up(),
+            parse_mode='HTML'
+        )
+        logger.info(f"🏳️ Desistência - Chat: {chat_id}")
+        delete_session(chat_id)
