@@ -215,3 +215,31 @@ async def unlock(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     
     logger.info(f"🔓 Bot destravado - Chat: {chat_id}, Admin: {user.id}")
+
+async def leave_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Comando para o bot sair de um grupo (apenas dono do bot)"""
+    user_id = update.effective_user.id
+    
+    # ⚠️ COLOQUE SEU USER_ID AQUI
+    BOT_OWNER_ID = 1790032262
+    
+    if user_id != BOT_OWNER_ID:
+        return  # Ignora se não for você
+    
+    chat_id = update.effective_chat.id
+    chat_title = update.effective_chat.title or "Chat"
+    
+    try:
+        await update.message.reply_text(
+            f"👋 Saindo do grupo '{chat_title}'...",
+            parse_mode='HTML'
+        )
+        
+        # Faz o bot sair do grupo
+        await context.bot.leave_chat(chat_id)
+        
+        logger.info(f"👋 Bot saiu do grupo - Chat: {chat_id} ({chat_title})")
+        
+    except Exception as e:
+        logger.error(f"❌ Erro ao sair do grupo: {e}")
+        await update.message.reply_text(f"❌ Erro ao sair: {e}")

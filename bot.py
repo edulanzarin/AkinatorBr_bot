@@ -4,7 +4,7 @@ import logging
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler
 from telegram import Update
 
-from handlers.commands import start, play, cancel, lock, unlock
+from handlers.commands import start, play, cancel, lock, unlock, leave_group
 from handlers.callbacks import button_handler, guess_result_handler, continue_handler
 from utils.session_manager import cleanup_expired_sessions, set_bot_application
 from database.mongodb import connect_mongodb, close_mongodb
@@ -56,6 +56,7 @@ def main():
     app.add_handler(CommandHandler("cancelar", cancel))
     app.add_handler(CommandHandler("travar", lock))      # ← NOVO
     app.add_handler(CommandHandler("destravar", unlock))
+    app.add_handler(CommandHandler("sair", leave_group))
     
     # Registra callbacks
     app.add_handler(CallbackQueryHandler(
