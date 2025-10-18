@@ -13,7 +13,8 @@ from utils.session_manager import (
 )
 from utils.keyboard import create_game_keyboard
 from utils.messages import format_question, format_welcome
-from database.mongodb import save_user_id
+from utils.permissions import is_user_admin
+from database.mongodb import save_user_id, lock_chat, unlock_chat, is_chat_locked
 
 logger = logging.getLogger(__name__)
 
@@ -21,8 +22,12 @@ logger = logging.getLogger(__name__)
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handler do comando /start"""
     user = update.effective_user
+    chat_id = update.effective_chat.id
     
-    # Salva o user_id no MongoDB
+    # Verifica se o chat está travado
+    if await is_chat_locked(chat_id):
+        return
+    
     await save_user_id(user.id)
     
     await update.message.reply_text(
@@ -36,7 +41,14 @@ async def play(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     user = update.effective_user
     
-    # Salva o user_id no MongoDB
+    # Verifica se o chat está travado
+    if await is_chat_locked(chat_id):
+        await update.message.reply_text(
+            "🔒 O bot está travado neste grupo.\n"
+            "Apenas administradores podem usar /destravar."
+        )
+        return
+    
     await save_user_id(user.id)
     
     # Verifica se já existe sessão ativa
@@ -91,7 +103,14 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     user = update.effective_user
     
-    # Salva o user_id no MongoDB
+    # Verifica se o chat está travado
+    if await is_chat_locked(chat_id):
+        await update.message.reply_text(
+            "🔒 O bot está travado neste grupo.\n"
+            "Apenas administradores podem usar /destravar."
+        )
+        return
+    
     await save_user_id(user.id)
     
     # Verifica se existe sessão
@@ -104,8 +123,7 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     session = get_session(chat_id)
     
     # Verifica se é o dono da sessão OU se é admin do grupo
-    member = await context.bot.get_chat_member(chat_id, user.id)
-    is_admin = member.status in ['administrator', 'creator']
+    is_admin = await is_user_admin(update, context)
     
     if session.user_id != user.id and not is_admin:
         await update.message.reply_text(
@@ -121,3 +139,75 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     
     logger.info(f"🛑 Jogo cancelado - Chat: {chat_id}, User: {user.id}")
+
+
+async def lock(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handler do comando /travar - Trava o bot (apenas admins)"""
+    chat_id = update.effective_chat.id
+    user = update.effective_user
+    
+    # Verifica se é admin
+    if not await is_user_admin(update, context):
+        await update.message.reply_text(
+            "❗ Apenas administradores podem travar o bot."
+        )
+        return
+    
+    await save_user_id(user.id)
+    
+    # Verifica se já está travado
+    if await is_chat_locked(chat_id):
+        await update.message.reply_text(
+            "🔒 O bot já está travado neste grupo."
+        )
+        return
+    
+    # Cancela jogo ativo se houver
+    if has_active_session(chat_id):
+        delete_session(chat_id)
+    
+    # Trava o chat
+    await lock_chat(chat_id)
+    
+    await update.message.reply_text(
+        "🔒 <b>Bot travado com sucesso!</b>\n\n"
+        "O bot não responderá a nenhum comando neste grupo até ser destravado.\n"
+        "Use /destravar para liberar.",
+        parse_mode='HTML'
+    )
+    
+    logger.info(f"🔒 Bot travado - Chat: {chat_id}, Admin: {user.id}")
+
+
+async def unlock(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handler do comando /destravar - Destrava o bot (apenas admins)"""
+    chat_id = update.effective_chat.id
+    user = update.effective_user
+    
+    # Verifica se é admin
+    if not await is_user_admin(update, context):
+        await update.message.reply_text(
+            "❗ Apenas administradores podem destravar o bot."
+        )
+        return
+    
+    await save_user_id(user.id)
+    
+    # Verifica se está travado
+    if not await is_chat_locked(chat_id):
+        await update.message.reply_text(
+            "🔓 O bot não está travado neste grupo."
+        )
+        return
+    
+    # Destrava o chat
+    await unlock_chat(chat_id)
+    
+    await update.message.reply_text(
+        "🔓 <b>Bot destravado com sucesso!</b>\n\n"
+        "O bot voltou a funcionar normalmente.\n"
+        "Use /jogar para começar um jogo.",
+        parse_mode='HTML'
+    )
+    
+    logger.info(f"🔓 Bot destravado - Chat: {chat_id}, Admin: {user.id}")
