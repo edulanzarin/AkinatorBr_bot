@@ -18,9 +18,9 @@ async def connect_mongodb():
     """Conecta ao MongoDB"""
     global _mongo_client, _db, _users_collection, _locked_chats_collection
     
-    mongo_uri = os.getenv("MONGODB_URI")
+    mongo_uri = os.getenv("MONGO_URL")
     if not mongo_uri:
-        logger.warning("⚠️ MONGODB_URI não configurado! IDs não serão salvos.")
+        logger.warning("⚠️ MONGO_URL não configurado! IDs não serão salvos.")
         return False
     
     try:
