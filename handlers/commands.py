@@ -26,6 +26,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     # Verifica se o chat está travado
     if await is_chat_locked(chat_id):
+        await update.message.reply_text(
+            "🔒 O bot está travado neste grupo.\n"
+            "Apenas administradores podem usar /destravar."
+        )
         return
     
     await save_user_id(user.id)
@@ -146,7 +150,7 @@ async def lock(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     user = update.effective_user
     
-    # Verifica se é admin
+    # Verifica se é admin ANTES de qualquer coisa
     if not await is_user_admin(update, context):
         await update.message.reply_text(
             "❗ Apenas administradores podem travar o bot."
@@ -184,7 +188,7 @@ async def unlock(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     user = update.effective_user
     
-    # Verifica se é admin
+    # Verifica se é admin ANTES de qualquer coisa
     if not await is_user_admin(update, context):
         await update.message.reply_text(
             "❗ Apenas administradores podem destravar o bot."
